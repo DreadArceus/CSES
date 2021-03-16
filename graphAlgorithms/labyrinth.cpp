@@ -1,82 +1,112 @@
 #include <iostream>
+#include <stdio.h>
 #include <string>
-#include <set>
 using namespace std;
- 
-class graphNode
+
+char calcDirection(int start, int end, int columnCount)
 {
-public:
-    char val;
-    graphNode *up;
-    graphNode *down;
-    graphNode *left;
-    graphNode *right;
-};
- 
-string ansPath = "";
-bool checkPath(graphNode *node, char dir, string path, set<graphNode*> visited)
-{
-    if(node->val != 'A')
-        path.push_back(dir);
-    if (node->val == 'B')
-    {
-        if (ansPath == "" || path.length() < ansPath.length())
-            ansPath = path;
-        return true;
-    }
-    if (visited.count(node) == 1)
-        return false;
-    visited.insert(node);
-    bool result = false;
-    if (node->up && node->up->val != '#')
-        result |= checkPath(node->up, 'U', path, visited);
-    if (node->down && node->down->val != '#')
-        result |= checkPath(node->down, 'D', path, visited);
-    if (node->left && node->left->val != '#')
-        result |= checkPath(node->left, 'L', path, visited);
-    if (node->right && node->right->val != '#')
-        result |= checkPath(node->right, 'R', path, visited);
-    return result;
+    if (start - end == columnCount)
+        return 'U';
+    if (end - start == columnCount)
+        return 'D';
+    if (start - end == 1)
+        return 'L';
+    if (end - start == 1)
+        return 'R';
 }
- 
+
+int findMin(int dist[], bool finalHash[], int count)
+{
+    int minDis = INT32_MAX, minIndex;
+    for (int i = 0; i < count; i++)
+    {
+        if (!finalHash[i] && dist[i] <= minDis)
+        {
+            minIndex = i;
+            minDis = dist[i];
+        }
+    }
+    return minIndex;
+}
+
+string dijsktra(int graph[], int start, int end, int columnCount, int rowCount)
+{
+    int count = columnCount * rowCount;
+
+    int dist[count];
+    bool finalHash[count];
+    string path[count];
+    for (int i = 0; i < count; i++)
+    {
+        dist[i] = INT32_MAX;
+        finalHash[i] = false;
+        path[i] = "";
+    }
+
+    dist[start] = 0;
+    for (int i = 0; i < count - 1; i++)
+    {
+        int next = findMin(dist, finalHash, count);
+        finalHash[next] = true;
+        for (int x = 0; x < count; x++)
+        {
+            if (!finalHash[x] && graph[next * count + x] && dist[next] != INT32_MAX && dist[next] + graph[next * count + x] < dist[x])
+            {
+                dist[x] = dist[next] + graph[next * count + x];
+                path[x] = path[next];
+                path[x].push_back(calcDirection(next, x, columnCount));
+            }
+        }
+    }
+
+    return path[end];
+}
+
 int main()
 {
-    int n = 0, m = 0;
+    long long n = 0, m = 0;
     cin >> n >> m;
-    graphNode *startNode = nullptr;
-    graphNode *prevRow[m];
+    int *graph = (int *)malloc(sizeof(int) * n * m * n * m);
+    char prevRow[m];
+    int startIndex, endIndex;
     for (int i = 0; i < n; i++)
     {
-        graphNode *prevNode;
-        string rowVal;
-        cin >> rowVal;
+        char prevChar;
+        char rowVal[m];
+        scanf("%s", rowVal);
         for (int j = 0; j < m; j++)
         {
-            graphNode *newNode = new graphNode;
-            newNode->val = rowVal[j];
+            char newChar = rowVal[j];
             if (j != 0)
             {
-                prevNode->right = newNode;
-                newNode->left = prevNode;
+                if (prevChar != '#')
+                    graph[(i * m + j - 1) * n * m + i * m + j] = ((newChar == '#') ? 0 : 1);
+                if (newChar != '#')
+                    graph[(i * m + j) * n * m + i * m + j - 1] = ((prevChar == '#') ? 0 : 1);
             }
             if (i != 0)
             {
-                prevRow[j]->down = newNode;
-                newNode->up = prevRow[j];
+                if (prevRow[j] != '#')
+                    graph[((i - 1) * m + j) * n * m + i * m + j] = ((newChar == '#') ? 0 : 1);
+                if (newChar != '#')
+                    graph[(i * m + j) * n * m + (i - 1) * m + j] = ((prevRow[j] == '#') ? 0 : 1);
             }
-            prevNode = newNode;
-            prevRow[j] = newNode;
-            if (newNode->val == 'A')
-                startNode = newNode;
+            prevChar = newChar;
+            prevRow[j] = newChar;
+            if (newChar == 'A')
+                startIndex = i * m + j;
+            if (newChar == 'B')
+                endIndex = i * m + j;
         }
     }
-    if (checkPath(startNode, 'A', "", set<graphNode*>()))
+    string ans = dijsktra(graph, startIndex, endIndex, m, n);
+    if (ans.length() == 0)
     {
-        cout << "YES\n"
-             << ansPath.length() << "\n" + ansPath;
+        cout << "NO";
     }
     else
     {
-        cout << "NO";
+        cout << "YES\n"
+             << ans.length() << "\n" + ans;
     }
 }
