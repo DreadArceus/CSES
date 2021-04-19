@@ -1,5 +1,3 @@
-// Completely wrong approach, min + abs is not the proper min of a branch
-// Need to use 2 seg trees for this, brb after other questions
 #include <iostream>
 #include <vector>
 #include <string>
