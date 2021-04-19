@@ -1,5 +1,3 @@
-// Completely wrong approach, min + abs is not the proper min of a branch
-// Need to use 2 seg trees for this, brb after other questions
 #include <iostream>
 #include <vector>
 #include <string>
@@ -120,13 +118,12 @@ void solveCase()
 {
     int n = 0, q = 0;
     cin >> n >> q;
-    lazySegTree st1(n), st2(n);
+    lazySegTree st(n);
     for (int i = 0; i < n; i++)
     {
-        int p = 0;
-        cin >> p;
-        st1.pointUpdate(i, p - i);
-        st2.pointUpdate(i, p + i);
+        int x = 0;
+        cin >> x;
+        st.pointUpdate(i, x);
     }
     while (q--)
     {
@@ -134,22 +131,15 @@ void solveCase()
         cin >> choice;
         if (choice == 1)
         {
-            int k = 0, x = 0;
-            cin >> k >> x;
-            st1.pointUpdate(k - 1, x - (k - 1));
-            st2.pointUpdate(k - 1, x + k - 1);
+            int a = 0, b = 0, u = 0;
+            cin >> a >> b >> u;
+            st.rangeUpdate(a - 1, b, u);
         }
         else
         {
             int k = 0;
             cin >> k;
-            st1.rangeUpdate(0, k, k - 1);
-            st2.rangeUpdate(k, n, -1 * (k - 1));
-            cout << min(st1.query(0, k).element,
-                        st2.query(k, n).element);
-            st1.rangeUpdate(0, k, -1 * (k - 1));
-            st2.rangeUpdate(k, n, k - 1);
-            cout << "\n";
+            cout << st.query(k - 1, k).element << "\n";
         }
     }
 }
