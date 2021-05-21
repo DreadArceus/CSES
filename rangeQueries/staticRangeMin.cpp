@@ -11,6 +11,11 @@ using namespace std;
 #define pii pair<int, int>
 int32_t mod = 1e9 + 7;
 
+struct SpTItem
+{
+    int element;
+};
+
 class SparseTable
 {
 public:
@@ -20,44 +25,43 @@ public:
         this->k = 0;
         while ((1 << k) < n)
             k++;
-        this->table = vector<vector<int>>(n, vector<int>(k + 1));
+        this->table.resize(n, vector<SpTItem>(k + 1));
+        this->log.resize(n + 1);
     }
-    void insert(int ind, int val)
+    void insert(int ind, SpTItem val)
     {
         this->table[ind][0] = val;
         this->activated = false;
     }
-    int query(int l, int r)
+    SpTItem query(int l, int r)
     {
         if (!this->activated)
             this->arise();
-        int ans = this->null;
-        for (int j = k; j >= 0; j--)
-        {
-            if ((1 << j) <= r - l + 1)
-            {
-                ans = merge(ans, table[l][j]);
-                l += 1 << j;
-            }
-        }
-        return ans;
+        int j = log[r - l + 1];
+        return merge(table[l][j], table[r - (1 << j) + 1][j]);
     }
 
 private:
     int n, k;
     bool activated;
-    vector<vector<int>> table;
-    int null = INT32_MAX;
+    vector<vector<SpTItem>> table;
+    vector<int> log;
+    SpTItem null = {INT32_MAX};
     void arise()
     {
         for (int j = 1; j <= k; j++)
             for (int i = 0; i + (1 << j) <= n; i++)
                 table[i][j] = merge(table[i][j - 1], table[i + (1 << (j - 1))][j - 1]);
+        log[1] = 0;
+        for (int i = 2; i <= n; i++)
+            log[i] = log[i / 2] + 1;
         activated = true;
     }
-    int merge(int x, int y)
+    SpTItem merge(SpTItem x, SpTItem y)
     {
-        return min(x, y);
+        SpTItem res;
+        res.element = min(x.element, y.element);
+        return res;
     }
 };
 
@@ -70,13 +74,13 @@ void solveCase()
     {
         int x = 0;
         cin >> x;
-        st.insert(i, x);
+        st.insert(i, {x});
     }
     while (q--)
     {
         int a = 0, b = 0;
         cin >> a >> b;
-        cout << st.query(a - 1, b - 1) << "\n";
+        cout << st.query(a - 1, b - 1).element << "\n";
     }
 }
 
