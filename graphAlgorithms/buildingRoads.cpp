@@ -3,6 +3,33 @@
 #include <algorithm>
 using namespace std;
 
+inline int read()
+{
+    int x = 0;
+    while (1)
+    {
+        char ch = getchar_unlocked();
+        if (ch >= '0' && ch <= '9')
+            x = x * 10 + (ch - '0');
+        else
+            return x;
+    }
+}
+
+inline void write(int x, char ch = 0)
+{
+    if (x == 0)
+        putchar_unlocked('0');
+    char s[20];
+    int y = 0;
+    while (x)
+        s[y++] = '0' + x % 10, x /= 10;
+    while (y--)
+        putchar_unlocked(s[y]);
+    if (ch)
+        putchar_unlocked(ch);
+}
+
 class DSU
 {
 public:
@@ -40,15 +67,13 @@ private:
 
 void solveCase()
 {
-    int n = 0, m = 0;
-    cin >> n >> m;
+    int n = read(), m = read();
     DSU d(n);
     for (int i = 0; i < n; i++)
         d.make_set(i);
     for (int i = 0; i < m; i++)
     {
-        int a = 0, b = 0;
-        cin >> a >> b;
+        int a = read(), b = read();
         d.union_sets(a - 1, b - 1);
     }
     vector<int> ans;
@@ -62,9 +87,9 @@ void solveCase()
         d.union_sets(0, i);
         ult = d.find_set(0);
     }
-    cout << ans.size() << "\n";
+    write(ans.size(), '\n');
     for (auto x : ans)
-        cout << 1 << " " << x + 1 << "\n";
+        write(1, ' '), write(x + 1, '\n');
 }
 
 int32_t main()
