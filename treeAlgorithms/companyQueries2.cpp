@@ -1,104 +1,182 @@
 #include <iostream>
 #include <vector>
 #include <algorithm>
+#include <cmath>
 using namespace std;
-#define pii pair<int, int>
+
+inline int read()
+{
+    int x = 0;
+    while (1)
+    {
+        char ch = getchar_unlocked();
+        if (ch >= '0' && ch <= '9')
+            x = x * 10 + (ch - '0');
+        else
+            return x;
+    }
+}
+
+inline void write(int x, char ch = 0)
+{
+    char s[20];
+    int y = 0;
+    while (x)
+        s[y++] = '0' + x % 10, x /= 10;
+    while (y--)
+        putchar_unlocked(s[y]);
+    if (ch)
+        putchar_unlocked(ch);
+}
 
 class LCA
 {
 public:
-    LCA(int n, int q)
+    LCA(int n)
     {
         this->tree.resize(n);
-        this->queries.resize(n);
-        this->visited.resize(n);
-        this->parent.resize(n);
-        this->rank.resize(n);
-        this->answers.assign(q, -1);
+        this->first.resize(n);
+        this->heights.resize(n);
     }
     void addEdge(int parent, int child)
     {
         tree[parent].push_back(child);
     }
-    void addQuery(int a, int b, int i)
+    void arise()
     {
-        queries[a].push_back(make_pair(b, i));
-        queries[b].push_back(make_pair(a, i));
+        dfs(0, 0);
+
+        int m = eulerTour.size();
+        log_2.reserve(m + 1);
+        log_2.push_back(-1);
+        for (int i = 1; i <= m; i++)
+            log_2.push_back(log_2[i / 2] + 1);
+
+        block_size = max(1, log_2[m] / 2);
+        block_cnt = (m + block_size - 1) / block_size;
+
+        st.assign(block_cnt, vector<int>(log_2[block_cnt] + 1));
+        for (int i = 0, j = 0, b = 0; i < m; i++, j++)
+        {
+            if (j == block_size)
+                j = 0, b++;
+            if (j == 0 || min_by_h(i, st[b][0]) == i)
+                st[b][0] = i;
+        }
+        for (int l = 1; l <= log_2[block_cnt]; l++)
+        {
+            for (int i = 0; i < block_cnt; i++)
+            {
+                int ni = i + (1 << (l - 1));
+                if (ni >= block_cnt)
+                    st[i][l] = st[i][l - 1];
+                else
+                    st[i][l] = min_by_h(st[i][l - 1], st[ni][l - 1]);
+            }
+        }
+
+        block_mask.assign(block_cnt, 0);
+        for (int i = 0, j = 0, b = 0; i < m; i++, j++)
+        {
+            if (j == block_size)
+                j = 0, b++;
+            if (j > 0 && (i >= m || min_by_h(i - 1, i) == i - 1))
+                block_mask[b] += 1 << (j - 1);
+        }
+
+        int possibilities = 1 << (block_size - 1);
+        blocks.resize(possibilities);
+        for (int b = 0; b < block_cnt; b++)
+        {
+            int mask = block_mask[b];
+            if (!blocks[mask].empty())
+                continue;
+            blocks[mask].assign(block_size, vector<int>(block_size));
+            for (int l = 0; l < block_size; l++)
+            {
+                blocks[mask][l][l] = l;
+                for (int r = l + 1; r < block_size; r++)
+                {
+                    blocks[mask][l][r] = blocks[mask][l][r - 1];
+                    if (b * block_size + r < m)
+                        blocks[mask][l][r] = min_by_h(b * block_size + blocks[mask][l][r],
+                                                      b * block_size + r) -
+                                             b * block_size;
+                }
+            }
+        }
     }
-    vector<int> arise()
+    int query(int a, int b)
     {
-        dfs(0);
-        return answers;
+        if (first[a] > first[b])
+            swap(a, b);
+        int ind = this->sparseQuery(first[a], first[b]);
+        return eulerTour[ind];
     }
 
 private:
     vector<vector<int>> tree;
-    vector<vector<pii>> queries;
-    vector<int> answers;
-    vector<bool> visited;
-    vector<int> parent, rank;
-    void make_set(int v)
+    vector<int> eulerTour, heights, first;
+    void dfs(int source, int h)
     {
-        parent[v] = v;
-        rank[v] = 0;
-    }
-    int find_set(int v)
-    {
-        if (v == parent[v])
-            return v;
-        return parent[v] = find_set(parent[v]);
-    }
-    void union_sets(int a, int b)
-    {
-        a = find_set(a);
-        b = find_set(b);
-        if (a == b)
-            return;
-        if (rank[a] < rank[b])
-            swap(a, b);
-        parent[b] = a;
-        if (rank[a] == rank[b])
-            rank[a]++;
-    }
-    void dfs(int source)
-    {
-        visited[source] = true;
-        make_set(source);
+        eulerTour.push_back(source);
+        heights[source] = h;
+        first[source] = eulerTour.size() - 1;
         for (auto x : tree[source])
         {
-            dfs(x);
-            union_sets(source, x);
-            parent[find_set(source)] = source;
-            parent[source] = source;
+            dfs(x, h + 1);
+            eulerTour.push_back(source);
         }
-        for (auto [q, i] : queries[source])
+    }
+    int min_by_h(int i, int j)
+    {
+        return heights[eulerTour[i]] < heights[eulerTour[j]] ? i : j;
+    }
+
+    int block_size, block_cnt;
+    vector<int> log_2;
+    vector<vector<int>> st;
+    vector<int> block_mask;
+    vector<vector<vector<int>>> blocks;
+    int lca_in_block(int b, int l, int r)
+    {
+        return blocks[block_mask[b]][l][r] + b * block_size;
+    }
+    int sparseQuery(int l, int r)
+    {
+        int bl = l / block_size;
+        int br = r / block_size;
+        if (bl == br)
+            return lca_in_block(bl, l % block_size, r % block_size);
+        int ans1 = lca_in_block(bl, l % block_size, block_size - 1);
+        int ans2 = lca_in_block(br, 0, r % block_size);
+        int ans = min_by_h(ans1, ans2);
+        if (bl + 1 < br)
         {
-            if (!visited[q] || answers[i] != -1)
-                continue;
-            answers[i] = parent[find_set(q)];
+            int l = log_2[br - bl - 1];
+            int ans3 = st[bl + 1][l];
+            int ans4 = st[br - (1 << l)][l];
+            ans = min_by_h(ans, min_by_h(ans3, ans4));
         }
+        return ans;
     }
 };
 
 void solveCase()
 {
-    int n = 0, q = 0;
-    cin >> n >> q;
-    LCA l(n, q);
+    int n = read(), q = read();
+    LCA l(n);
     for (int i = 1; i < n; i++)
     {
-        int p = 0;
-        cin >> p;
+        int p = read();
         l.addEdge(p - 1, i);
     }
-    for (int i = 0; i < q; i++)
+    l.arise();
+    while (q--)
     {
-        int a = 0, b = 0;
-        cin >> a >> b;
-        l.addQuery(a - 1, b - 1, i);
+        int a = read(), b = read();
+        write(l.query(a - 1, b - 1) + 1, '\n');
     }
-    for (int x : l.arise())
-        cout << x + 1 << "\n";
 }
 
 int32_t main()
